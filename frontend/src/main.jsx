@@ -5,6 +5,7 @@ import './index.css'
 import { ClerkProvider } from '@clerk/clerk-react'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { UserProvider } from '@/components/UserProvider'
+import { ToastProvider } from '@/components/ui/use-toast'
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
@@ -23,7 +24,9 @@ ReactDOM.createRoot(rootElement).render(
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
       <ThemeProvider defaultTheme="dark">
         <UserProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </UserProvider>
       </ThemeProvider>
     </ClerkProvider>

@@ -11,7 +11,7 @@ export function HomePage() {
           <div className="inline-flex p-3 mb-6 rounded-full bg-primary/10">
             <Droplet className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight">Water Can Ledger Management</h1>
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight">PayPrompt</h1>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mb-10">
             The complete solution for managing your water can business
           </p>
@@ -23,31 +23,7 @@ export function HomePage() {
               <Link to="#features">Learn More</Link>
             </Button>
           </div>
-          
-          {/* Stats Section */}
-          <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 py-4 px-2 md:px-8 rounded-lg bg-card/50 backdrop-blur-sm border">
-            <div className="p-4">
-              <p className="text-3xl font-bold">500+</p>
-              <p className="text-sm text-muted-foreground">Happy Customers</p>
-            </div>
-            <div className="p-4">
-              <p className="text-3xl font-bold">5000+</p>
-              <p className="text-sm text-muted-foreground">Water Cans Delivered</p>
-            </div>
-            <div className="p-4">
-              <p className="text-3xl font-bold">98%</p>
-              <p className="text-sm text-muted-foreground">Customer Satisfaction</p>
-            </div>
-            <div className="p-4">
-              <p className="text-3xl font-bold">24/7</p>
-              <p className="text-sm text-muted-foreground">Support Available</p>
-            </div>
-          </div>
         </div>
-        
-        {/* Decorative elements */}
-        <div className="absolute top-1/4 left-10 w-24 h-24 rounded-full bg-primary/5 blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-10 w-32 h-32 rounded-full bg-primary/5 blur-3xl"></div>
       </section>
       
       {/* Features Section */}
@@ -177,10 +153,10 @@ export function HomePage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center gap-2 mb-4 md:mb-0">
               <Droplet className="h-6 w-6 text-primary" />
-              <span className="font-bold">Water Can Ledger</span>
+              <span className="font-bold">PayPrompt</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Water Can Ledger Management. All rights reserved.
+              © {new Date().getFullYear()} PayPrompt. All rights reserved.
             </p>
           </div>
         </div>
