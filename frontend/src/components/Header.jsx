@@ -78,24 +78,24 @@ export function Header() {
           <NavigationMenu className="hidden md:flex mx-6 flex-auto justify-center">
             <NavigationMenuList>
               <NavigationMenuItem>
-                <Link to="/">
-                  <NavigationMenuLink className={cn(
+                <NavigationMenuLink asChild>
+                  <Link to="/" className={cn(
                     navigationMenuTriggerStyle(),
                     location.pathname === "/" && "text-primary font-medium bg-accent/50"
                   )}>
                     Home
-                  </NavigationMenuLink>
-                </Link>
+                  </Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link to="/dashboard">
-                  <NavigationMenuLink className={cn(
+                <NavigationMenuLink asChild>
+                  <Link to="/dashboard" className={cn(
                     navigationMenuTriggerStyle(),
                     location.pathname === "/dashboard" && "text-primary font-medium bg-accent/50"
                   )}>
                     Dashboard
-                  </NavigationMenuLink>
-                </Link>
+                  </Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
               
               {/* Show different menu options based on role */}
@@ -121,47 +121,47 @@ export function Header() {
                     </NavigationMenuContent>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <Link to="/inventory">
-                      <NavigationMenuLink className={cn(
+                    <NavigationMenuLink asChild>
+                      <Link to="/inventory" className={cn(
                         navigationMenuTriggerStyle(),
                         location.pathname === "/inventory" && "text-primary font-medium bg-accent/50"
                       )}>
                         Inventory
-                      </NavigationMenuLink>
-                    </Link>
+                      </Link>
+                    </NavigationMenuLink>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <Link to="/reports">
-                      <NavigationMenuLink className={cn(
+                    <NavigationMenuLink asChild>
+                      <Link to="/reports" className={cn(
                         navigationMenuTriggerStyle(),
                         location.pathname === "/reports" && "text-primary font-medium bg-accent/50"
                       )}>
                         Reports
-                      </NavigationMenuLink>
-                    </Link>
+                      </Link>
+                    </NavigationMenuLink>
                   </NavigationMenuItem>
                 </>
               ) : (
                 <>
                   <NavigationMenuItem>
-                    <Link to="/customers">
-                      <NavigationMenuLink className={cn(
+                    <NavigationMenuLink asChild>
+                      <Link to="/customers" className={cn(
                         navigationMenuTriggerStyle(),
                         location.pathname === "/customers" && "text-primary font-medium bg-accent/50"
                       )}>
                         My Account
-                      </NavigationMenuLink>
-                    </Link>
+                      </Link>
+                    </NavigationMenuLink>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <Link to="/customers/history">
-                      <NavigationMenuLink className={cn(
+                    <NavigationMenuLink asChild>
+                      <Link to="/customers/history" className={cn(
                         navigationMenuTriggerStyle(),
                         location.pathname === "/customers/history" && "text-primary font-medium bg-accent/50"
                       )}>
                         Order History
-                      </NavigationMenuLink>
-                    </Link>
+                      </Link>
+                    </NavigationMenuLink>
                   </NavigationMenuItem>
                 </>
               )}

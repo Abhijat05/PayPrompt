@@ -17,8 +17,18 @@ export function UserProvider({ children }) {
           if (user.publicMetadata?.role) {
             setRole(user.publicMetadata.role);
           } else {
-            // If no role found, we could fetch from your backend
-            // This is where you would typically check your database
+            // For development, set a default role instead of trying to fetch from backend
+            // This avoids the error when the backend isn't running or endpoint doesn't exist
+            
+            // DEVELOPMENT MODE: Set default role based on user email
+            // In production, you would fetch this from your API
+            if (user.primaryEmailAddress?.emailAddress?.includes('owner')) {
+              setRole('owner');
+            } else {
+              setRole('user');
+            }
+            
+            /* PRODUCTION MODE: Uncomment this when your backend is ready
             const response = await fetch(`/api/users/${user.id}/role`);
             if (response.ok) {
               const data = await response.json();
@@ -26,6 +36,7 @@ export function UserProvider({ children }) {
             } else {
               setRole("user"); // Default role if fetch fails
             }
+            */
           }
         } catch (error) {
           console.error("Failed to fetch user role:", error);
