@@ -37,7 +37,17 @@ export const authenticate = async (req, res, next) => {
           id: decoded.sub,
           email: user.emailAddresses[0]?.emailAddress,
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Customer',
+          role: user.publicMetadata?.role || 'user', // Add role from Clerk metadata
         };
+
+        // For development purposes - easy role detection based on email
+        if (process.env.NODE_ENV === 'development') {
+          if (req.user.email && req.user.email.toLowerCase().includes('owner')) {
+            req.user.role = 'owner';
+          } else if (req.user.email && req.user.email.toLowerCase().includes('admin')) {
+            req.user.role = 'admin';
+          }
+        }
       } catch (clerkError) {
         console.error('Clerk API error:', clerkError);
         // Continue without Clerk verification if Clerk API fails in development
