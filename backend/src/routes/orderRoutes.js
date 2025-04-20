@@ -1,20 +1,17 @@
 import express from 'express';
-import { createOrder, getUserOrders, getAllOrders, updateOrderStatus } from '../controllers/orderController.js';
+import { createOrder, getAllOrders, getOrderById, getUserOrders, updateOrderStatus } from '../controllers/orderController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
-import { requireRole } from '../middleware/roleMiddleware.js';
+import { requireOwner } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
 
-// Create a new order
+// Route to get user's own orders
+router.get('/user', authenticate, getUserOrders);
+
+// Protected routes that require owner role
+router.get('/', authenticate, requireOwner, getAllOrders);
+router.get('/:id', authenticate, getOrderById);
 router.post('/', authenticate, createOrder);
-
-// Get orders for the authenticated user
-router.get('/user/:userId', authenticate, getUserOrders);
-
-// Get all orders (shop owner only)
-router.get('/', authenticate, requireRole('owner'), getAllOrders);
-
-// Update order status (shop owner only)
-router.patch('/:orderId', authenticate, requireRole('owner'), updateOrderStatus);
+router.patch('/:id/status', authenticate, requireOwner, updateOrderStatus);
 
 export default router;

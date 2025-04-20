@@ -67,7 +67,7 @@ export const getCustomerProfile = async (req, res) => {
     
     // If no customer found but we're in development, create a mock customer
     if (!customer && process.env.NODE_ENV === 'development') {
-      console.log('Creating mock customer data for development');
+      // console.log('Creating mock customer data for development');
       
       // Mock customer data
       const mockCustomer = {

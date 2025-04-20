@@ -13,45 +13,56 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Valid quantity is required' });
     }
 
+    // Use the authenticated user's ID if userId isn't provided in the request
+    const effectiveUserId = userId || req.user?.id;
+    
+    if (!effectiveUserId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
     // Check if we have the customer record
-    let customer = await Customer.findOne({ clerkId: userId });
+    let customer = await Customer.findOne({ clerkId: effectiveUserId });
     
     // If customer doesn't exist, create one based on the authenticated user
     if (!customer) {
       customer = new Customer({
-        name: req.user.name || 'Customer',
-        email: req.user.email || '',
+        name: req.user?.name || 'Customer',
+        email: req.user?.email || '',
         address: 'Address pending update',
         phone: 'Phone pending update',
-        clerkId: userId,
+        clerkId: effectiveUserId, // Make sure clerkId is set properly
         balance: 1000, // Initial balance for new customers
+        cansInPossession: 0 // Start with no cans
       });
       
       await customer.save();
-      console.log('Created new customer from Clerk user:', userId);
+      console.log('Created new customer from Clerk user:', effectiveUserId);
     }
 
     // Check if customer has sufficient balance
     const orderTotal = WATER_CAN_PRICE * quantity;
+    
     if (customer.balance < orderTotal) {
       return res.status(400).json({ 
-        message: 'Insufficient balance. Please add funds to your account.' 
+        message: `Insufficient balance. Required: ₹${orderTotal}, Available: ₹${customer.balance}` 
       });
     }
 
     // Create the new order
     const newOrder = new Order({
-      userId,
+      userId: effectiveUserId,
       quantity,
       orderDate: orderDate || new Date(),
       price: WATER_CAN_PRICE,
-      totalAmount: orderTotal
+      totalAmount: orderTotal,
+      status: 'pending'
     });
 
     await newOrder.save();
 
-    // Update customer's balance
+    // Update customer's balance and cans in possession
     customer.balance -= newOrder.totalAmount;
+    customer.cansInPossession += quantity; // Increment cans when order is placed
     await customer.save();
 
     res.status(201).json({
@@ -63,19 +74,58 @@ export const createOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Order creation error:', error);
-    res.status(500).json({ message: 'Failed to create order', error: error.message });
+    res.status(500).json({ 
+      message: 'Failed to create order', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
-// Get all orders for a user
+// Get a specific order by ID
+export const getOrderById = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    // Check if the user has permission to view this order
+    // Only the order owner or shop owner can view order details
+    const isOwner = req.user.role === 'owner';
+    const isOrderCreator = req.user.id === order.userId;
+    
+    if (!isOwner && !isOrderCreator) {
+      return res.status(403).json({ message: 'You do not have permission to view this order' });
+    }
+    
+    res.status(200).json(order);
+  } catch (error) {
+    console.error('Get order error:', error);
+    res.status(500).json({ message: 'Failed to fetch order', error: error.message });
+  }
+};
+
+// Get orders for the authenticated user
 export const getUserOrders = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const orders = await Order.find({ userId }).sort({ orderDate: -1 });
+    const userId = req.user.id;
+    
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    // Find all orders for this user, sorted by date (most recent first)
+    const orders = await Order.find({ userId })
+      .sort({ orderDate: -1 })
+      .lean();
     
     res.status(200).json(orders);
   } catch (error) {
-    console.error('Get user orders error:', error);
+    console.error('Error fetching user orders:', error);
     res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
   }
 };
