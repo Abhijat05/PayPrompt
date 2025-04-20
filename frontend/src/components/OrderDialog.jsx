@@ -27,47 +27,19 @@ export function OrderDialog({ open, onOpenChange, onOrderPlaced }) {
     setIsLoading(true);
     
     try {
-      // Get authentication token from Clerk
-      const token = await getToken();
-      
-      // Prepare order data
-      const orderData = {
-        quantity,
-        userId: user?.id,
-        orderDate: new Date().toISOString()
-      };
-      
-      // Make API call to backend using axios
-      const response = await axios.post(`${API_URL}/orders`, orderData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      // Call the callback with order data from response
+      // Call the callback with just the quantityy
+      // The parent component will add userId and other necessary fields
       onOrderPlaced?.({
-        quantity,
-        orderId: response.data.orderId,
-        totalAmount: response.data.totalAmount
+        quantity: quantity
       });
       
-      // Close the dialog and reset form
-      onOpenChange(false);
+      // Reset form state
       setQuantity(1);
-      
-      toast({
-        title: "Order Placed Successfully",
-        description: `Your order for ${quantity} water cans has been placed.`,
-        variant: "success"
-      });
     } catch (error) {
-      console.error("Error placing order:", error);
-      const errorMessage = error.response?.data?.message || "There was a problem placing your order.";
-      
+      console.error("Error in order form submission:", error);
       toast({
         title: "Order Failed",
-        description: errorMessage,
+        description: "There was a problem processing your order form.",
         variant: "destructive"
       });
     } finally {
@@ -76,7 +48,13 @@ export function OrderDialog({ open, onOpenChange, onOrderPlaced }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      // Reset form state when dialog closes
+      if (!isOpen) {
+        setQuantity(1);
+      }
+      onOpenChange(isOpen);
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Order Water Cans</DialogTitle>

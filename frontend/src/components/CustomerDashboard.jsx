@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Calendar, History } from "lucide-react";
+import { ShoppingCart, Calendar, History, Droplet } from "lucide-react";
 import { OrderDialog } from "@/components/OrderDialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 
 // API base URL - match with OrderDialog.jsx
 const API_URL = "http://localhost:3000/api";
@@ -23,84 +24,144 @@ export function CustomerDashboard() {
   const { getToken } = useAuth();
   const { user } = useUser();
 
-  // Fetch user orders and data on component mount
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) return;
-      
-      try {
-        setIsLoading(true);
-        const token = await getToken();
-        
-        // Fetch user orders
-        const response = await axios.get(`${API_URL}/orders/user/${user.id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        // Transform orders to delivery format
-        const deliveries = response.data.map(order => ({
-          date: new Date(order.orderDate).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          }),
-          quantity: order.quantity,
-          id: order._id
-        }));
-        
-        setRecentDeliveries(deliveries);
-        
-        // In a real implementation, you would also fetch customer balance data
-        // This is a placeholder - you would typically get this from a customer endpoint
-        // Add a customer info endpoint to your backend for this
-        setUserStats({
-          balance: 750, // Placeholder - replace with API data
-          availableCans: 5, // Placeholder - replace with API data
-          totalConsumption: deliveries.reduce((total, delivery) => total + delivery.quantity, 0)
-        });
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        toast({
-          title: "Failed to load data",
-          description: "We couldn't load your orders. Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Define fetchUserData outside useEffect so it can be reused
+  const fetchUserData = async () => {
+    if (!user) return;
     
+    try {
+      setIsLoading(true);
+      const token = await getToken();
+      
+      // Fetch user data
+      const customerResponse = await axios.get(`${API_URL}/customers/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Fetch user orders
+      const ordersResponse = await axios.get(`${API_URL}/orders/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Transform orders to delivery format
+      const deliveries = ordersResponse.data.map(order => ({
+        date: new Date(order.orderDate).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }),
+        quantity: order.quantity,
+        id: order._id
+      }));
+      
+      // Calculate total consumption from orders
+      const totalConsumption = ordersResponse.data.reduce(
+        (sum, order) => sum + order.quantity, 0
+      );
+      
+      // Update state with fetched data
+      setRecentDeliveries(deliveries.slice(0, 5)); // Show only 5 most recent
+      setUserStats({
+        balance: customerResponse.data.balance || 0,
+        availableCans: customerResponse.data.cansInPossession || 0,
+        totalConsumption: totalConsumption
+      });
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      toast({
+        title: "Failed to load data",
+        description: "We couldn't load your dashboard information. Please try again later.",
+        variant: "destructive"
+      });
+      
+      // For development purposes, use mock data if API fails
+      if (process.env.NODE_ENV === 'development') {
+        setRecentDeliveries([
+          { date: "Mar 15, 2023", quantity: 2, id: "mock1" },
+          { date: "Feb 28, 2023", quantity: 3, id: "mock2" },
+          { date: "Feb 14, 2023", quantity: 2, id: "mock3" }
+        ]);
+        setUserStats({
+          balance: 650,
+          availableCans: 3,
+          totalConsumption: 24
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Use it in useEffect
+  useEffect(() => {
     fetchUserData();
   }, [user, getToken, toast]);
 
-  const handleOrderPlaced = async (orderData) => {
-    // Add the new order to recent deliveries at the top
-    const newDelivery = {
-      date: new Date().toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }),
-      quantity: orderData.quantity,
-      id: orderData.orderId
-    };
-    
-    setRecentDeliveries(prev => [newDelivery, ...prev]);
-    
-    // Update consumption stats
-    setUserStats(prev => ({
-      ...prev,
-      totalConsumption: prev.totalConsumption + orderData.quantity,
-      balance: prev.balance - (orderData.totalAmount || orderData.quantity * 30)
-    }));
-    
-    toast({
-      title: "Order Placed Successfully",
-      description: `Your order for ${orderData.quantity} water cans has been placed.`,
-      variant: "success"
-    });
+  // Format balance as currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount).replace('₹', '₹');
+  };
+  
+  // Update the handleOrderSubmit function
+  const handleOrderSubmit = async (orderData) => {
+    try {
+      if (!user?.id) {
+        toast({
+          title: "Authentication Error",
+          description: "User identification is missing. Please sign in again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const token = await getToken();
+      
+      // Make sure we have the required fields in the correct format
+      const payload = {
+        userId: user.id, // Always include the user ID
+        quantity: orderData.quantity,
+        orderDate: new Date().toISOString()
+      };
+      
+      console.log("Sending order payload:", payload);
+      
+      const response = await axios.post(`${API_URL}/orders`, payload, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log("Order response:", response.data);
+      
+      toast({
+        title: "Order placed successfully",
+        description: `Your order for ${payload.quantity} water cans has been placed.`,
+      });
+      
+      // Refresh data after placing an order
+      fetchUserData();
+    } catch (error) {
+      console.error("Error placing order:", error);
+      
+      // Show more detailed error message if available
+      const errorMessage = error.response?.data?.message || 
+        "We couldn't process your order. Please try again later.";
+      
+      toast({
+        title: "Failed to place order",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsOrderDialogOpen(false);
+    }
   };
 
   if (isLoading) {
@@ -115,71 +176,96 @@ export function CustomerDashboard() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-4">
-          <h3 className="font-medium">Current Balance</h3>
-          <div className="mt-2 text-2xl font-bold">₹{userStats.balance}</div>
-          <p className="text-sm text-muted-foreground mt-1">Last updated: 3 hrs ago</p>
-        </Card>
-        <Card className="p-4">
-          <h3 className="font-medium">Water Cans Available</h3>
-          <div className="mt-2 text-2xl font-bold">{userStats.availableCans} Cans</div>
-          <p className="text-sm text-muted-foreground mt-1">Refill scheduled for Monday</p>
-        </Card>
-        <Card className="p-4">
-          <h3 className="font-medium">Total Consumption</h3>
-          <div className="mt-2 text-2xl font-bold">{userStats.totalConsumption} Cans</div>
-          <p className="text-sm text-muted-foreground mt-1">This month</p>
-        </Card>
-      </div>
-      
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="p-4">
-          <div className="flex justify-between mb-4">
-            <h3 className="font-medium">Recent Deliveries</h3>
-            <Button variant="ghost" size="sm" className="h-8">
-              <History className="mr-2 h-4 w-4" /> View All
-            </Button>
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-medium">Current Balance</h3>
+            <div className="bg-primary/10 p-2 rounded-full">
+              <Droplet className="h-4 w-4 text-primary" />
+            </div>
           </div>
-          
-          <div className="space-y-2">
-            {recentDeliveries.length > 0 ? (
-              recentDeliveries.map((delivery, index) => (
-                <div key={delivery.id || index} className="flex justify-between py-2 border-b">
-                  <span>{delivery.date}</span>
-                  <span className="font-medium">{delivery.quantity} cans</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-center py-6 text-muted-foreground">No recent deliveries found</p>
-            )}
+          <div className={`text-2xl font-bold ${userStats.balance < 0 ? 'text-destructive' : ''}`}>
+            {formatCurrency(userStats.balance)}
           </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {userStats.balance >= 0 
+              ? "Your account is in good standing" 
+              : "Please settle your dues"}
+          </p>
         </Card>
         
         <Card className="p-4">
-          <h3 className="font-medium mb-4">Quick Actions</h3>
-          <div className="flex flex-col gap-3">
-            <Button 
-              className="justify-start"
-              onClick={() => setIsOrderDialogOpen(true)}
-            >
-              <ShoppingCart className="mr-2 h-4 w-4" /> 
-              Order Water Cans
-            </Button>
-            <Button variant="outline" className="justify-start">
-              <Calendar className="mr-2 h-4 w-4" /> 
-              Schedule Delivery
-            </Button>
-            <Button variant="secondary" className="justify-start">
-              View Payment History
-            </Button>
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-medium">Cans Available</h3>
+            <div className="bg-primary/10 p-2 rounded-full">
+              <ShoppingCart className="h-4 w-4 text-primary" />
+            </div>
           </div>
+          <div className="text-2xl font-bold">{userStats.availableCans}</div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {userStats.availableCans > 0 
+              ? "Ready for exchange" 
+              : "Time to order more"}
+          </p>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-medium">Total Consumption</h3>
+            <div className="bg-primary/10 p-2 rounded-full">
+              <History className="h-4 w-4 text-primary" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold">{userStats.totalConsumption}</div>
+          <p className="text-sm text-muted-foreground mt-1">Water cans consumed</p>
         </Card>
       </div>
       
-      {/* Order Dialog */}
+      <div className="flex flex-wrap gap-4 justify-between items-center">
+        <h2 className="text-xl font-semibold">Recent Deliveries</h2>
+        <Button onClick={() => setIsOrderDialogOpen(true)}>
+          <ShoppingCart className="mr-2 h-4 w-4" />
+          Order Now
+        </Button>
+      </div>
+      
+      {recentDeliveries.length > 0 ? (
+        <div className="grid gap-2">
+          {recentDeliveries.map((delivery) => (
+            <Card key={delivery.id} className="p-4 flex justify-between items-center">
+              <div className="flex items-center">
+                <div className="bg-primary/10 p-3 rounded-full mr-4">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">{delivery.date}</p>
+                  <p className="text-sm text-muted-foreground">Order #{delivery.id.substring(0, 8)}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-bold">{delivery.quantity} cans</p>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">You haven't placed any orders yet.</p>
+          <Button className="mt-4" onClick={() => setIsOrderDialogOpen(true)}>
+            Place Your First Order
+          </Button>
+        </Card>
+      )}
+      
+      <div className="mt-4 flex justify-end">
+        <Button variant="outline" asChild>
+          <Link to="/customers/history">View All History</Link>
+        </Button>
+      </div>
+      
       <OrderDialog 
-        open={isOrderDialogOpen} 
+        open={isOrderDialogOpen}
         onOpenChange={setIsOrderDialogOpen}
-        onOrderPlaced={handleOrderPlaced}
+        onOrderPlaced={handleOrderSubmit}
+        availableCans={userStats.availableCans}
       />
     </div>
   );
