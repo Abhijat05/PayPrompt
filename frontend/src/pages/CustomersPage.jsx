@@ -174,36 +174,61 @@ function AddCustomer() {
 }
 
 function PendingPayments() {
-  const [customers, setCustomers] = useState([]);
+  const [pendingOrders, setPendingOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchPendingCustomers = async () => {
+    const fetchPendingOrders = async () => {
       try {
         setIsLoading(true);
         const token = await getToken();
         
-        // Fetch all customers first
-        const response = await axios.get(`${API_URL}/customers`, {
+        // Fetch orders with pending status
+        const response = await axios.get(`${API_URL}/orders`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          params: {
+            status: 'pending'
+          }
+        });
+        
+        // Get unique customer IDs from orders
+        const customerIds = [...new Set(response.data.map(order => order.userId))];
+        
+        // Fetch customer details for these IDs
+        const customersResponse = await axios.get(`${API_URL}/customers`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
         
-        // Filter only customers with negative balance (pending payments)
-        const pendingCustomers = response.data.filter(
-          customer => customer.balance < 0
-        ).sort((a, b) => a.balance - b.balance); // Sort by balance (most negative first)
+        // Create a map of customer IDs to customer data
+        const customerMap = {};
+        customersResponse.data.forEach(customer => {
+          customerMap[customer.clerkId] = customer;
+        });
         
-        setCustomers(pendingCustomers);
+        // Enhance orders with customer information
+        const ordersWithCustomerInfo = response.data.map(order => ({
+          ...order,
+          customer: customerMap[order.userId] || { 
+            name: 'Unknown Customer',
+            balance: 0,
+            phone: 'No phone',
+            email: 'No email'
+          }
+        }));
+        
+        setPendingOrders(ordersWithCustomerInfo);
       } catch (error) {
-        console.error("Error fetching pending payments:", error);
+        console.error("Error fetching pending orders:", error);
         toast({
-          title: "Failed to load pending payments",
-          description: "We couldn't load the pending payments list. Please try again later.",
+          title: "Failed to load pending orders",
+          description: "We couldn't load the pending orders list. Please try again later.",
           variant: "destructive"
         });
       } finally {
@@ -211,8 +236,17 @@ function PendingPayments() {
       }
     };
     
-    fetchPendingCustomers();
+    fetchPendingOrders();
   }, [getToken, toast]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
   if (isLoading) {
     return (
@@ -226,38 +260,40 @@ function PendingPayments() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <p className="text-muted-foreground">
-          {customers.length > 0 
-            ? `${customers.length} customers with pending payments` 
-            : "No pending payments found"}
+          {pendingOrders.length > 0 
+            ? `${pendingOrders.length} orders pending delivery or payment` 
+            : "No pending orders found"}
         </p>
         <Button variant="outline" onClick={() => navigate('/customers')}>
           View All Customers
         </Button>
       </div>
       
-      {customers.length > 0 ? (
+      {pendingOrders.length > 0 ? (
         <div className="grid gap-4">
-          {customers.map(customer => (
-            <Card key={customer._id} className="p-4">
+          {pendingOrders.map(order => (
+            <Card key={order._id} className="p-4">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h3 className="font-medium">{customer.name}</h3>
+                  <h3 className="font-medium">
+                    Order #{order._id.substring(0, 8)} - {order.customer?.name || 'Unknown Customer'}
+                  </h3>
                   <div className="flex flex-col md:flex-row gap-2 md:gap-6 text-sm text-muted-foreground">
-                    <span>{customer.phone || 'No phone'}</span>
-                    <span>{customer.email || 'No email'}</span>
+                    <span>Ordered: {formatDate(order.orderDate)}</span>
+                    <span>{order.customer?.phone || 'No phone'}</span>
                   </div>
                 </div>
                 <div className="flex flex-col md:flex-row gap-3 md:items-center">
                   <div className="md:text-right md:mr-6">
-                    <span className="block text-sm font-medium">Outstanding Balance</span>
-                    <span className="font-semibold text-destructive">₹{Math.abs(customer.balance)}</span>
+                    <span className="block text-sm font-medium">Order Value</span>
+                    <span className="font-semibold">₹{order.totalAmount}</span>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" asChild>
-                      <Link to={`/customers/details/${customer._id}`}>View Details</Link>
+                      <Link to={`/orders/details/${order._id}`}>View Order</Link>
                     </Button>
                     <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                      Collect Payment
+                      Process Order
                     </Button>
                   </div>
                 </div>
@@ -267,8 +303,8 @@ function PendingPayments() {
         </div>
       ) : (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground mb-4">All customer accounts are in good standing.</p>
-          <p className="text-sm text-muted-foreground">When customers have outstanding payments, they will appear here.</p>
+          <p className="text-muted-foreground mb-4">All orders are processed.</p>
+          <p className="text-sm text-muted-foreground">When orders are pending, they will appear here.</p>
         </Card>
       )}
     </div>
@@ -582,5 +618,135 @@ function CustomerPaymentHistory() {
 }
 
 function OwnerPaymentHistory() {
-  return <p className="text-muted-foreground">All customers payment history will appear here.</p>;
+  const [paidOrders, setPaidOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchPaidOrders = async () => {
+      try {
+        setIsLoading(true);
+        const token = await getToken();
+        
+        // Fetch orders with paid status
+        const response = await axios.get(`${API_URL}/orders`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          params: {
+            status: 'paid'
+          }
+        });
+        
+        // Get unique customer IDs from orders
+        const customerIds = [...new Set(response.data.map(order => order.userId))];
+        
+        // Fetch customer details for these IDs
+        const customersResponse = await axios.get(`${API_URL}/customers`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        // Create a map of customer IDs to customer data
+        const customerMap = {};
+        customersResponse.data.forEach(customer => {
+          customerMap[customer.clerkId] = customer;
+        });
+        
+        // Enhance orders with customer information
+        const ordersWithCustomerInfo = response.data.map(order => ({
+          ...order,
+          customer: customerMap[order.userId] || { 
+            name: 'Unknown Customer',
+            balance: 0,
+            phone: 'No phone',
+            email: 'No email'
+          }
+        }));
+        
+        setPaidOrders(ordersWithCustomerInfo);
+      } catch (error) {
+        console.error("Error fetching paid orders:", error);
+        toast({
+          title: "Failed to load paid orders",
+          description: "We couldn't load the paid orders list. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchPaidOrders();
+  }, [getToken, toast]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <p className="text-muted-foreground">
+          {paidOrders.length > 0 
+            ? `${paidOrders.length} completed payment transactions` 
+            : "No payment records found"}
+        </p>
+        <Button variant="outline" asChild>
+          <Link to="/orders">View All Orders</Link>
+        </Button>
+      </div>
+      
+      {paidOrders.length > 0 ? (
+        <div className="grid gap-4">
+          {paidOrders.map(order => (
+            <Card key={order._id} className="p-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="font-medium">
+                    Order #{order._id.substring(0, 8)} - {order.customer?.name || 'Unknown Customer'}
+                  </h3>
+                  <div className="flex flex-col md:flex-row gap-2 md:gap-6 text-sm text-muted-foreground">
+                    <span>Paid on: {formatDate(order.orderDate)}</span>
+                    <span>{order.customer?.phone || 'No phone'}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                  <div className="md:text-right md:mr-6">
+                    <span className="block text-sm font-medium">Payment Amount</span>
+                    <span className="font-semibold text-green-600">₹{order.totalAmount}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/orders/details/${order._id}`}>View Details</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground mb-4">No payment records found.</p>
+          <p className="text-sm text-muted-foreground">When orders are paid, they will appear here.</p>
+        </Card>
+      )}
+    </div>
+  );
 }

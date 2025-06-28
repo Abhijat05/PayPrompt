@@ -1,6 +1,7 @@
 import Customer from '../models/Customer.js';
 import Order from '../models/Order.js';
 import Transaction from '../models/Transaction.js';
+import Inventory from '../models/Inventory.js';
 
 // Get dashboard summary data for shop owner
 export const getDashboardSummary = async (req, res) => {
@@ -36,8 +37,18 @@ export const getDashboardSummary = async (req, res) => {
       // Continue with zero revenue if there's an error
     }
 
-    // Get mock inventory data (since you don't have a real inventory model yet)
-    const cansInStock = 67;
+    // Get actual inventory data from the database
+    let cansInStock = 0;
+    try {
+      const latestInventory = await Inventory.findOne().sort({ createdAt: -1 });
+      if (latestInventory) {
+        cansInStock = latestInventory.availableCans;
+      } else {
+        console.log("No inventory records found, defaulting to 0 cans in stock");
+      }
+    } catch (err) {
+      console.error("Error fetching inventory data:", err);
+    }
     
     // Get pending deliveries count
     let pendingDeliveries = 0;
