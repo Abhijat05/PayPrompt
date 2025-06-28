@@ -56,8 +56,14 @@ export function CustomerBalanceManagement({
     try {
       const token = await getToken();
       
+      // Fix: Use the correct API functions with proper parameters
       if (dialogType === 'add') {
-        const result = await customerService.addBalance(customerId, amount, token);
+        const result = await customerService.updateCustomerBalance(customerId, {
+          amount: amount,
+          transactionType: 'credit',
+          description: description || 'Account recharge'
+        }, token);
+        
         toast({
           title: "Balance Added",
           description: `Successfully added ₹${amount} to ${customerName}'s account.`,
@@ -65,7 +71,12 @@ export function CustomerBalanceManagement({
         });
         onBalanceUpdated(result.newBalance);
       } else {
-        const result = await customerService.removeBalance(customerId, amount, description, token);
+        const result = await customerService.updateCustomerBalance(customerId, {
+          amount: amount,
+          transactionType: 'debit',
+          description: description || 'Balance adjustment'
+        }, token);
+        
         toast({
           title: "Balance Removed",
           description: `Successfully removed ₹${amount} from ${customerName}'s account.`,

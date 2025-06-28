@@ -171,21 +171,62 @@ export const customerService = {
   },
 
   updateCustomerBalance: async (customerId, data, token) => {
-    const response = await fetch(`http://localhost:3000/api/customers/${customerId}/balance`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(data)
-    });
+    try {
+      const response = await fetch(`http://localhost:3000/api/customers/${customerId}/balance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to update balance');
+      if (!response.ok) {
+        throw new Error('Failed to update balance');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
     }
+  },
+  
+  // Add these helper functions for cleaner code
+  addBalance: async (customerId, amount, token) => {
+    return customerService.updateCustomerBalance(customerId, {
+      amount,
+      transactionType: 'credit',
+      description: 'Account recharge'
+    }, token);
+  },
+  
+  removeBalance: async (customerId, amount, description, token) => {
+    return customerService.updateCustomerBalance(customerId, {
+      amount,
+      transactionType: 'debit',
+      description
+    }, token);
+  },
 
-    return response.json();
-  }
+  getCustomerById: async (customerId, token) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/customers/${customerId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch customer details');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  },
 };
 
 export const orderService = {

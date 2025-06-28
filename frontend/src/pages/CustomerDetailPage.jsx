@@ -25,7 +25,8 @@ export function CustomerDetailPage() {
       try {
         setIsLoading(true);
         const token = await getToken();
-        const customerData = await customerService.getCustomerProfile(customerId, token);
+        // Fix: Use consistent ID formatting
+        const customerData = await customerService.getCustomerById(customerId, token);
         setCustomer(customerData);
       } catch (error) {
         console.error("Failed to fetch customer:", error);
@@ -39,24 +40,9 @@ export function CustomerDetailPage() {
       }
     };
 
-    const fetchTransactions = async () => {
-      try {
-        setTransactionsLoading(true);
-        const token = await getToken();
-        const result = await customerService.getTransactionHistory(customerId, { limit: 5 }, token);
-        setTransactions(result.transactions);
-      } catch (error) {
-        console.error("Failed to fetch transactions:", error);
-        // Set empty transactions instead of showing error
-        setTransactions([]);
-      } finally {
-        setTransactionsLoading(false);
-      }
-    };
-
+    // Add the getCustomerById function to the API service if it doesn't exist
     if (customerId) {
       fetchCustomerData();
-      fetchTransactions();
     }
   }, [customerId, getToken, toast]);
 

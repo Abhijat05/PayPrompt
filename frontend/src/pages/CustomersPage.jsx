@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useUserRole } from "@/components/UserProvider";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth, useUser } from "@clerk/clerk-react";
@@ -174,7 +174,105 @@ function AddCustomer() {
 }
 
 function PendingPayments() {
-  return <p className="text-muted-foreground">Customers with pending payments will appear here.</p>;
+  const [customers, setCustomers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchPendingCustomers = async () => {
+      try {
+        setIsLoading(true);
+        const token = await getToken();
+        
+        // Fetch all customers first
+        const response = await axios.get(`${API_URL}/customers`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        // Filter only customers with negative balance (pending payments)
+        const pendingCustomers = response.data.filter(
+          customer => customer.balance < 0
+        ).sort((a, b) => a.balance - b.balance); // Sort by balance (most negative first)
+        
+        setCustomers(pendingCustomers);
+      } catch (error) {
+        console.error("Error fetching pending payments:", error);
+        toast({
+          title: "Failed to load pending payments",
+          description: "We couldn't load the pending payments list. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchPendingCustomers();
+  }, [getToken, toast]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <p className="text-muted-foreground">
+          {customers.length > 0 
+            ? `${customers.length} customers with pending payments` 
+            : "No pending payments found"}
+        </p>
+        <Button variant="outline" onClick={() => navigate('/customers')}>
+          View All Customers
+        </Button>
+      </div>
+      
+      {customers.length > 0 ? (
+        <div className="grid gap-4">
+          {customers.map(customer => (
+            <Card key={customer._id} className="p-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="font-medium">{customer.name}</h3>
+                  <div className="flex flex-col md:flex-row gap-2 md:gap-6 text-sm text-muted-foreground">
+                    <span>{customer.phone || 'No phone'}</span>
+                    <span>{customer.email || 'No email'}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                  <div className="md:text-right md:mr-6">
+                    <span className="block text-sm font-medium">Outstanding Balance</span>
+                    <span className="font-semibold text-destructive">₹{Math.abs(customer.balance)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/customers/details/${customer._id}`}>View Details</Link>
+                    </Button>
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                      Collect Payment
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground mb-4">All customer accounts are in good standing.</p>
+          <p className="text-sm text-muted-foreground">When customers have outstanding payments, they will appear here.</p>
+        </Card>
+      )}
+    </div>
+  );
 }
 
 function CustomerAccount() {

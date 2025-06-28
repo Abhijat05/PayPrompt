@@ -47,25 +47,19 @@ export function ShopOwnerDashboard() {
           variant: "destructive"
         });
         
-        // For development purposes - use placeholder data if API fails
-        if (process.env.NODE_ENV === 'development') {
-          setDashboardData({
-            totalCustomers: 345,
-            monthlyRevenue: 45231,
-            cansInStock: 67,
-            pendingDeliveries: 12,
-            recentOrders: [
-              { id: 1, customerName: "Rahul Sharma", quantity: 3, date: new Date() },
-              { id: 2, customerName: "Priya Patel", quantity: 2, date: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-              { id: 3, customerName: "Amit Kumar", quantity: 5, date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) }
-            ],
-            paymentStatus: {
-              collectedToday: 5430,
-              pendingCollections: 12850,
-              overduePayments: 3200
-            }
-          });
-        }
+        // Fix: Set default data with proper structure
+        setDashboardData({
+          totalCustomers: 0,
+          monthlyRevenue: 0,
+          cansInStock: 0,
+          pendingDeliveries: 0,
+          recentOrders: [],
+          paymentStatus: {
+            collectedToday: 0,
+            pendingCollections: 0,
+            overduePayments: 0
+          }
+        });
       } finally {
         setIsLoading(false);
       }

@@ -81,6 +81,14 @@ export default function App() {
             }
           />
           <Route
+            path="/customers/:customerId"
+            element={
+              <ProtectedRoute allowedRoles="owner">
+                <CustomerDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/customers/:customerId/transactions"
             element={
               <ProtectedRoute allowedRoles="owner">

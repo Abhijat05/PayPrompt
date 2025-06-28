@@ -27,10 +27,10 @@ export function OrderDialog({ open, onOpenChange, onOrderPlaced }) {
     setIsLoading(true);
     
     try {
-      // Call the callback with just the quantityy
-      // The parent component will add userId and other necessary fields
+      // Fix: Include userId in the payload
       onOrderPlaced?.({
-        quantity: quantity
+        quantity: quantity,
+        userId: user?.id
       });
       
       // Reset form state
@@ -52,6 +52,7 @@ export function OrderDialog({ open, onOpenChange, onOrderPlaced }) {
       // Reset form state when dialog closes
       if (!isOpen) {
         setQuantity(1);
+        setIsLoading(false);
       }
       onOpenChange(isOpen);
     }}>
