@@ -15,6 +15,7 @@ import {
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/components/UserProvider";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function Header() {
   const location = useLocation();
@@ -177,7 +178,10 @@ export function Header() {
               </SignInButton>
             </SignedOut>
             <SignedIn>
-              <UserButton afterSignOutUrl="/" />
+              <div className="flex items-center gap-2">
+                <NotificationBell />
+                <UserButton afterSignOutUrl="/" />
+              </div>
             </SignedIn>
             
             {/* Mobile menu button */}

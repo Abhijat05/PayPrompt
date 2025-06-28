@@ -8,6 +8,7 @@ import { InventoryPage } from "@/pages/InventoryPage";
 import { ReportsPage } from "@/pages/ReportsPage";
 import { CustomerDetailPage } from "@/pages/CustomerDetailPage";
 import { TransactionsPage } from "@/pages/TransactionsPage";
+import { NotificationsPage } from "@/pages/NotificationsPage";
 
 export default function App() {
   return (
@@ -96,6 +97,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/notifications" element={<NotificationsPage />} />
         </Routes>
       </div>
     </Router>

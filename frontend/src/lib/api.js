@@ -336,3 +336,105 @@ export const inventoryService = {
     }
   }
 };
+
+export const notificationService = {
+  getUserNotifications: async (token) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/notifications/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  },
+  
+  markAsRead: async (notificationId, token) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to mark notification as read');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  },
+  
+  createNotification: async (notificationData, token) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/notifications/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(notificationData)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create notification');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  },
+  
+  getAllNotifications: async (token) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/notifications/all', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch all notifications');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  },
+  
+  deleteNotification: async (notificationId, token) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/notifications/${notificationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete notification');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  }
+};

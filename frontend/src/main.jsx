@@ -3,30 +3,23 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 import { ClerkProvider } from '@clerk/clerk-react'
-import { ThemeProvider } from '@/components/ThemeProvider'
-import { UserProvider } from '@/components/UserProvider'
-import { ToastProvider } from '@/components/ui/use-toast'
+import { UserProvider } from './components/UserProvider.jsx'
+import { Toaster } from './components/ui/toaster.jsx'
+import { NotificationProvider } from './components/NotificationProvider.jsx'
+import { ThemeProvider } from './components/ThemeProvider.jsx'
 
-// Import your Publishable Key
+// Get your Clerk publishable key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key")
-}
-
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error('Failed to find the root element');
-}
-
-ReactDOM.createRoot(rootElement).render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
-      <ThemeProvider defaultTheme="dark">
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <ThemeProvider defaultTheme="light" storageKey="payPrompt-theme">
         <UserProvider>
-          <ToastProvider>
+          <NotificationProvider>
             <App />
-          </ToastProvider>
+            <Toaster />
+          </NotificationProvider>
         </UserProvider>
       </ThemeProvider>
     </ClerkProvider>

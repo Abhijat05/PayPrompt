@@ -1,5 +1,6 @@
 import Inventory from '../models/Inventory.js';
 import Customer from '../models/Customer.js';
+import Notification from '../models/Notification.js';
 import mongoose from 'mongoose';
 
 // Get current inventory status
@@ -109,6 +110,31 @@ export const updateInventory = async (req, res) => {
     };
     
     // In a real application, you would save this to a separate collection
+    
+    // Create notifications based on inventory update
+    if (operation === 'add') {
+      // Create a notification about new stock
+      const notification = new Notification({
+        title: 'New Stock Available',
+        message: `${quantity} new water cans have been added to inventory. Order now!`,
+        type: 'inventory',
+        isPublic: true,
+        createdBy: req.user.id
+      });
+      
+      await notification.save({ session });
+    } else if (operation === 'remove' && currentInventory.availableCans - quantity <= 10) {
+      // Create a notification about low stock
+      const notification = new Notification({
+        title: 'Limited Stock Alert',
+        message: `Only ${currentInventory.availableCans - quantity} water cans remaining in stock. Order soon!`,
+        type: 'inventory',
+        isPublic: true,
+        createdBy: req.user.id
+      });
+      
+      await notification.save({ session });
+    }
     
     await session.commitTransaction();
     session.endSession();
