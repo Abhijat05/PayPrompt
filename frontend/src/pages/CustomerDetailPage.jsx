@@ -163,7 +163,7 @@ export function CustomerDetailPage() {
                 </div>
                 
                 <CustomerBalanceManagement
-                  customerId={customer?.customerId}
+                  customerId={customer?._id}
                   customerName={customer?.name}
                   currentBalance={customer?.balance || 0}
                   onBalanceUpdated={handleBalanceUpdated}

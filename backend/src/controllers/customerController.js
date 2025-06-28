@@ -1,6 +1,7 @@
 import Customer from '../models/Customer.js';
 import Transaction from '../models/Transaction.js';
 import Order from '../models/Order.js';
+import mongoose from 'mongoose';
 
 // Get all customers (for shop owner)
 export const getAllCustomers = async (req, res) => {
@@ -97,8 +98,8 @@ export const getCustomerProfile = async (req, res) => {
     let lastOrder = null;
     
     try {
-      totalOrders = await Order.countDocuments({ customerId: customer._id });
-      lastOrder = await Order.findOne({ customerId: customer._id })
+      totalOrders = await Order.countDocuments({ userId: customer.clerkId });
+      lastOrder = await Order.findOne({ userId: customer.clerkId })
         .sort({ orderDate: -1 })
         .limit(1);
     } catch (orderError) {
@@ -189,21 +190,30 @@ export const updateCustomerProfile = async (req, res) => {
 
 // Update customer balance (add or remove)
 export const updateCustomerBalance = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
+    session.startTransaction();
+    
     const { customerId } = req.params;
     const { amount, transactionType, description } = req.body;
 
     if (!amount || amount <= 0) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ message: 'Valid amount is required' });
     }
 
     if (!['credit', 'debit'].includes(transactionType)) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ message: 'Transaction type must be credit or debit' });
     }
 
-    const customer = await Customer.findOne({ clerkId: customerId });
+    const customer = await Customer.findOne({ clerkId: customerId }).session(session);
     
     if (!customer) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ message: 'Customer not found' });
     }
 
@@ -214,6 +224,8 @@ export const updateCustomerBalance = async (req, res) => {
     } else {
       // Check if sufficient balance for debit
       if (customer.balance < amount) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ message: 'Insufficient balance for this transaction' });
       }
       newBalance = customer.balance - amount;
@@ -221,7 +233,7 @@ export const updateCustomerBalance = async (req, res) => {
 
     // Update customer balance
     customer.balance = newBalance;
-    await customer.save();
+    await customer.save({ session });
 
     // Create transaction record
     const transaction = new Transaction({
@@ -233,7 +245,11 @@ export const updateCustomerBalance = async (req, res) => {
       balanceAfter: newBalance
     });
 
-    await transaction.save();
+    await transaction.save({ session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
 
     res.status(200).json({
       message: `Balance ${transactionType === 'credit' ? 'added' : 'removed'} successfully`,
@@ -248,6 +264,8 @@ export const updateCustomerBalance = async (req, res) => {
       newBalance
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error('Update balance error:', error);
     res.status(500).json({ message: 'Failed to update balance', error: error.message });
   }

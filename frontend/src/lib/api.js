@@ -150,28 +150,53 @@ export const customerService = {
   },
 
   getTransactionHistory: async (customerId, params = {}, token) => {
-    const queryParams = new URLSearchParams();
-    if (params.page) queryParams.append('page', params.page);
-    if (params.limit) queryParams.append('limit', params.limit);
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page', params.page);
+      if (params.limit) queryParams.append('limit', params.limit);
 
-    const response = await fetch(
-      `http://localhost:3000/api/customers/${customerId}/transactions?${queryParams}`, 
-      {
+      const url = `http://localhost:3000/api/customers/${customerId}/transactions?${queryParams}`;
+      console.log('Fetching transactions from:', url);
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
+      });
+
+      if (!response.ok) {
+        // In development mode, return empty data for better UX during development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('API returned error, using fallback data');
+          return {
+            transactions: [],
+            pagination: {
+              total: 0,
+              page: parseInt(params.page || 1),
+              pages: 0
+            }
+          };
+        }
+        
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch transactions: ${response.status} ${errorText}`);
       }
-    );
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch transactions');
+      return response.json();
+    } catch (error) {
+      console.error('Transaction history API error:', error);
+      throw error;
     }
-
-    return response.json();
   },
 
   updateCustomerBalance: async (customerId, data, token) => {
     try {
+      if (!customerId) {
+        throw new Error('Customer ID is required');
+      }
+      
+      console.log(`Updating balance for customer: ${customerId}`);
+      
       const response = await fetch(`http://localhost:3000/api/customers/${customerId}/balance`, {
         method: 'POST',
         headers: {

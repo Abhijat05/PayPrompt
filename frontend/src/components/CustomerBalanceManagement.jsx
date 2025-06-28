@@ -56,7 +56,6 @@ export function CustomerBalanceManagement({
     try {
       const token = await getToken();
       
-      // Fix: Use the correct API functions with proper parameters
       if (dialogType === 'add') {
         const result = await customerService.updateCustomerBalance(customerId, {
           amount: amount,
@@ -71,6 +70,17 @@ export function CustomerBalanceManagement({
         });
         onBalanceUpdated(result.newBalance);
       } else {
+        // Check if there's enough balance for debit
+        if (currentBalance < amount) {
+          toast({
+            title: "Insufficient Balance",
+            description: `Customer only has ₹${currentBalance} available.`,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
         const result = await customerService.updateCustomerBalance(customerId, {
           amount: amount,
           transactionType: 'debit',

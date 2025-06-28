@@ -1,6 +1,9 @@
 import Customer from '../models/Customer.js';
 import { clerkClient } from '@clerk/clerk-sdk-node';
 
+// Problem: Complex nested conditionals for role checks
+// Fix by simplifying role determination:
+
 export const requireRole = (role) => {
   return async (req, res, next) => {
     try {
@@ -10,13 +13,18 @@ export const requireRole = (role) => {
         return res.status(401).json({ message: 'Authentication required' });
       }
       
-      // Development mode shortcut - check email address for role indicators
+      // Set a default role if already present and matches
+      if (req.user.role === role) {
+        return next();
+      }
+      
+      // Development shortcut
       if (process.env.NODE_ENV === 'development') {
         const email = req.user?.email?.toLowerCase() || '';
         
         // For development: Allow "owner" access based on email pattern
         if (role === 'owner' && (email.includes('owner') || email.includes('admin'))) {
-          req.user.role = 'owner'; // Set the role for future middleware
+          req.user.role = 'owner';
           return next();
         }
         
