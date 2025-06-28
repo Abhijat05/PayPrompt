@@ -449,7 +449,136 @@ function CustomerAccount() {
 }
 
 function CustomerPaymentHistory() {
-  return <p className="text-muted-foreground">Your payment history will appear here.</p>;
+  const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pagination, setPagination] = useState({ page: 1, total: 0, pages: 1 });
+  const { getToken } = useAuth();
+  const { user } = useUser();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchOrderHistory = async () => {
+      if (!user) return;
+      
+      try {
+        setIsLoading(true);
+        const token = await getToken();
+        
+        const response = await axios.get(`${API_URL}/orders/user`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          params: {
+            page: pagination.page,
+            limit: 10
+          }
+        });
+        
+        setOrders(response.data);
+      } catch (error) {
+        console.error("Error fetching order history:", error);
+        toast({
+          title: "Failed to load order history",
+          description: "We couldn't load your order history. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchOrderHistory();
+  }, [user, getToken, toast, pagination.page]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-muted-foreground">Review your order history and status below.</p>
+      
+      <Card className="p-6">
+        {isLoading ? (
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex justify-between py-3 border-b">
+                <div>
+                  <div className="h-5 w-[180px] bg-gray-200 rounded animate-pulse mb-1"></div>
+                  <div className="h-3 w-[100px] bg-gray-200 rounded animate-pulse"></div>
+                </div>
+                <div className="h-5 w-[60px] bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        ) : orders.length > 0 ? (
+          <>
+            <div className="space-y-4">
+              {orders.map((order) => (
+                <div key={order._id} className="flex justify-between items-center py-3 border-b">
+                  <div>
+                    <div className="font-medium">Order #{order._id.substring(0, 8)}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <span>{formatDate(order.orderDate)}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${
+                        order.status === 'delivered' 
+                          ? 'bg-green-100 text-green-800'
+                          : order.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium">{order.quantity} cans</div>
+                    <div className="text-xs text-muted-foreground">₹{order.totalAmount}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {pagination.pages > 1 && (
+              <div className="flex justify-center gap-2 mt-6">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={pagination.page === 1}
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                >
+                  Previous
+                </Button>
+                <span className="py-2 px-3 text-sm">
+                  Page {pagination.page} of {pagination.pages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={pagination.page === pagination.pages}
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground mb-4">You haven't placed any orders yet.</p>
+            <Button asChild>
+              <Link to="/">Place Your First Order</Link>
+            </Button>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
 }
 
 function OwnerPaymentHistory() {

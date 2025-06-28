@@ -272,3 +272,67 @@ export const orderService = {
     return response.json();
   }
 };
+
+// Add the inventory service
+export const inventoryService = {
+  getInventoryStatus: async (token) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/inventory/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch inventory status');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  },
+  
+  updateInventory: async (data, token) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/inventory/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update inventory: ${errorText}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  },
+  
+  getInventoryHistory: async (token) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/inventory/history', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch inventory history');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  }
+};

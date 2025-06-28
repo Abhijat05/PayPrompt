@@ -17,7 +17,8 @@ export function CustomerDashboard() {
   const [userStats, setUserStats] = useState({
     balance: 0,
     availableCans: 0,
-    totalConsumption: 0
+    totalConsumption: 0,
+    shopInventory: 0  // Add this line to track shop's available inventory
   });
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -46,6 +47,13 @@ export function CustomerDashboard() {
         }
       });
       
+      // Fetch shop inventory status
+      const inventoryResponse = await axios.get(`${API_URL}/inventory/status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
       // Transform orders to delivery format
       const deliveries = ordersResponse.data.map(order => ({
         date: new Date(order.orderDate).toLocaleDateString('en-US', {
@@ -54,7 +62,8 @@ export function CustomerDashboard() {
           year: 'numeric'
         }),
         quantity: order.quantity,
-        id: order._id
+        id: order._id,
+        status: order.status
       }));
       
       // Calculate total consumption from orders
@@ -67,7 +76,8 @@ export function CustomerDashboard() {
       setUserStats({
         balance: customerResponse.data.balance || 0,
         availableCans: customerResponse.data.cansInPossession || 0,
-        totalConsumption: totalConsumption
+        totalConsumption: totalConsumption,
+        shopInventory: inventoryResponse.data.availableCans || 0  // Add shop's available inventory
       });
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -76,20 +86,6 @@ export function CustomerDashboard() {
         description: "We couldn't load your dashboard information. Please try again later.",
         variant: "destructive"
       });
-      
-      // For development purposes, use mock data if API fails
-      if (process.env.NODE_ENV === 'development') {
-        setRecentDeliveries([
-          { date: "Mar 15, 2023", quantity: 2, id: "mock1" },
-          { date: "Feb 28, 2023", quantity: 3, id: "mock2" },
-          { date: "Feb 14, 2023", quantity: 2, id: "mock3" }
-        ]);
-        setUserStats({
-          balance: 650,
-          availableCans: 3,
-          totalConsumption: 24
-        });
-      }
     } finally {
       setIsLoading(false);
     }
@@ -98,8 +94,8 @@ export function CustomerDashboard() {
   // Use it in useEffect
   useEffect(() => {
     fetchUserData();
-  }, [user, getToken, toast]);
-
+  }, [user, getToken]);
+  
   // Format balance as currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -125,7 +121,7 @@ export function CustomerDashboard() {
       
       // Make sure we have the required fields in the correct format
       const payload = {
-        userId: user.id, // Always include the user ID
+        userId: user.id,
         quantity: orderData.quantity,
         orderDate: new Date().toISOString()
       };
@@ -194,16 +190,16 @@ export function CustomerDashboard() {
         
         <Card className="p-4">
           <div className="flex justify-between items-start mb-2">
-            <h3 className="font-medium">Cans Available</h3>
+            <h3 className="font-medium">Shop Inventory</h3>
             <div className="bg-primary/10 p-2 rounded-full">
-              <ShoppingCart className="h-4 w-4 text-primary" />
+              <Droplet className="h-4 w-4 text-primary" />
             </div>
           </div>
-          <div className="text-2xl font-bold">{userStats.availableCans}</div>
+          <div className="text-2xl font-bold">{userStats.shopInventory}</div>
           <p className="text-sm text-muted-foreground mt-1">
-            {userStats.availableCans > 0 
-              ? "Ready for exchange" 
-              : "Time to order more"}
+            {userStats.shopInventory > 0 
+              ? "Available for ordering" 
+              : "Out of stock"}
           </p>
         </Card>
         
@@ -237,7 +233,20 @@ export function CustomerDashboard() {
                 </div>
                 <div>
                   <p className="font-medium">{delivery.date}</p>
-                  <p className="text-sm text-muted-foreground">Order #{delivery.id.substring(0, 8)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Order #{delivery.id.substring(0, 8)}
+                    {delivery.status && (
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                        delivery.status === 'delivered' 
+                          ? 'bg-green-100 text-green-800'
+                          : delivery.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100'
+                      }`}>
+                        {delivery.status}
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
               <div className="text-right">
@@ -265,7 +274,6 @@ export function CustomerDashboard() {
         open={isOrderDialogOpen}
         onOpenChange={setIsOrderDialogOpen}
         onOrderPlaced={handleOrderSubmit}
-        availableCans={userStats.availableCans}
       />
     </div>
   );

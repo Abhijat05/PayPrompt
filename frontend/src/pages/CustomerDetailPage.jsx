@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Edit, User } from "lucide-react";
 import { CustomerBalanceManagement } from "@/components/CustomerBalanceManagement";
+import { CanReturnDialog } from "@/components/CanReturnDialog";
 
 export function CustomerDetailPage() {
   const { customerId } = useParams();
@@ -19,6 +20,7 @@ export function CustomerDetailPage() {
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchCustomerData = async () => {
@@ -64,6 +66,13 @@ export function CustomerDetailPage() {
     };
     
     refreshTransactions();
+  };
+
+  const handleCanReturnSuccess = (remainingCans) => {
+    setCustomer(prev => ({
+      ...prev,
+      cansInPossession: remainingCans
+    }));
   };
 
   return (
@@ -169,6 +178,24 @@ export function CustomerDetailPage() {
                   onBalanceUpdated={handleBalanceUpdated}
                 />
                 
+                <div className="mt-4">
+                  <h3 className="font-medium mb-2">Water Can Management</h3>
+                  <div className="flex justify-between items-center py-4 border-b mb-4">
+                    <span className="text-lg">Cans with Customer</span>
+                    <span className="text-2xl font-bold">
+                      {customer?.cansInPossession || 0}
+                    </span>
+                  </div>
+                  
+                  <Button 
+                    className="w-full" 
+                    onClick={() => setIsReturnDialogOpen(true)}
+                    disabled={!customer?.cansInPossession}
+                  >
+                    Process Can Return
+                  </Button>
+                </div>
+
                 <div className="mt-6">
                   <h3 className="font-medium mb-2">Recent Transactions</h3>
                   {transactionsLoading ? (
@@ -215,6 +242,15 @@ export function CustomerDetailPage() {
           </>
         )}
       </div>
+
+      <CanReturnDialog 
+        open={isReturnDialogOpen}
+        onOpenChange={setIsReturnDialogOpen}
+        customerId={customer?._id}
+        customerName={customer?.name}
+        cansInPossession={customer?.cansInPossession || 0}
+        onSuccess={handleCanReturnSuccess}
+      />
     </main>
   );
 }

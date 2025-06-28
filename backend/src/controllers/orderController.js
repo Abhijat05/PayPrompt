@@ -1,5 +1,6 @@
 import Order from '../models/Order.js';
 import Customer from '../models/Customer.js';
+import Inventory from '../models/Inventory.js';
 
 // Constants
 const WATER_CAN_PRICE = 30; // Price per water can
@@ -64,6 +65,26 @@ export const createOrder = async (req, res) => {
     customer.balance -= newOrder.totalAmount;
     customer.cansInPossession += quantity; // Increment cans when order is placed
     await customer.save();
+
+    // Update inventory - reduce available cans and increase cans with customers
+    const currentInventory = await Inventory.findOne().sort({ createdAt: -1 });
+    if (currentInventory) {
+      // Ensure we have enough cans available
+      if (currentInventory.availableCans < quantity) {
+        return res.status(400).json({ 
+          message: `Not enough cans available. Only ${currentInventory.availableCans} cans in stock.` 
+        });
+      }
+      
+      const newInventory = new Inventory({
+        totalCans: currentInventory.totalCans,
+        availableCans: currentInventory.availableCans - quantity,
+        cansWithCustomers: currentInventory.cansWithCustomers + quantity,
+        updatedBy: req.user.id
+      });
+      
+      await newInventory.save();
+    }
 
     res.status(201).json({
       message: 'Order placed successfully',
@@ -187,5 +208,54 @@ export const updateOrderStatus = async (req, res) => {
   } catch (error) {
     console.error('Update order error:', error);
     res.status(500).json({ message: 'Failed to update order', error: error.message });
+  }
+};
+
+// Process can return
+export const processCanReturn = async (req, res) => {
+  try {
+    const { customerId, quantity } = req.body;
+    
+    if (!quantity || quantity <= 0) {
+      return res.status(400).json({ message: 'Valid quantity is required' });
+    }
+    
+    // Find the customer
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+    
+    // Check if customer has enough cans to return
+    if (customer.cansInPossession < quantity) {
+      return res.status(400).json({ 
+        message: `Customer only has ${customer.cansInPossession} cans to return` 
+      });
+    }
+    
+    // Update customer's cans in possession
+    customer.cansInPossession -= quantity;
+    await customer.save();
+    
+    // Update inventory
+    const currentInventory = await Inventory.findOne().sort({ createdAt: -1 });
+    if (currentInventory) {
+      const newInventory = new Inventory({
+        totalCans: currentInventory.totalCans,
+        availableCans: currentInventory.availableCans + quantity,
+        cansWithCustomers: currentInventory.cansWithCustomers - quantity,
+        updatedBy: req.user.id
+      });
+      
+      await newInventory.save();
+    }
+    
+    res.status(200).json({
+      message: `Successfully processed return of ${quantity} cans`,
+      customerCansRemaining: customer.cansInPossession
+    });
+  } catch (error) {
+    console.error('Error processing can return:', error);
+    res.status(500).json({ message: 'Failed to process can return', error: error.message });
   }
 };

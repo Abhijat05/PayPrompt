@@ -1,69 +1,75 @@
 import { useState } from "react";
-import axios from "axios";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/clerk-react";
 import { useToast } from "@/components/ui/use-toast";
+import axios from "axios";
 
-// API base URL - consider moving this to an environment variable
 const API_URL = "http://localhost:3000/api";
 
-export function OrderDialog({ open, onOpenChange, onOrderPlaced }) {
-  const { user } = useUser();
-  const { getToken } = useAuth();
+export function CanReturnDialog({ 
+  open, 
+  onOpenChange, 
+  customerId, 
+  customerName,
+  cansInPossession,
+  onSuccess
+}) {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const { getToken } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (quantity < 1 || quantity > cansInPossession) {
+      toast({
+        title: "Invalid quantity",
+        description: `Please enter a quantity between 1 and ${cansInPossession}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
       const token = await getToken();
       
-      // Create the order directly here
-      const response = await axios.post(`${API_URL}/orders`, {
-        userId: user?.id,
-        quantity: quantity,
-        orderDate: new Date().toISOString()
+      const response = await axios.post(`${API_URL}/orders/return`, {
+        customerId,
+        quantity: parseInt(quantity)
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      // Notify parent component
-      onOrderPlaced?.({
-        quantity: quantity,
-        userId: user?.id,
-        orderData: response.data
-      });
-      
       toast({
-        title: "Order Placed Successfully",
-        description: `Your order for ${quantity} water can${quantity > 1 ? 's' : ''} has been placed.`
+        title: "Return Processed",
+        description: `Successfully processed return of ${quantity} cans from ${customerName}.`,
+        variant: "success",
       });
       
-      // Reset form state
-      setQuantity(1);
+      onSuccess(response.data.customerCansRemaining);
       onOpenChange(false);
     } catch (error) {
-      console.error("Error placing order:", error);
+      console.error("Failed to process return:", error);
+      
       const errorMessage = error.response?.data?.message || 
-        "We couldn't process your order. Please try again.";
+        "We couldn't process this return. Please try again.";
       
       toast({
-        title: "Order Failed",
+        title: "Error",
         description: errorMessage,
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -71,20 +77,24 @@ export function OrderDialog({ open, onOpenChange, onOrderPlaced }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) setQuantity(1);
+      onOpenChange(isOpen);
+    }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Place a New Order</DialogTitle>
-          <DialogDescription>
-            Enter the number of water cans you'd like to order.
-          </DialogDescription>
+          <DialogTitle>Process Can Return</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div>
+            <p className="mb-2">
+              <span className="font-medium">{customerName}</span> currently has{" "}
+              <span className="font-medium">{cansInPossession}</span> water cans.
+            </p>
             <div className="space-y-2">
               <label htmlFor="quantity" className="text-sm font-medium">
-                Water Can Quantity
+                Cans to Return
               </label>
               <div className="flex items-center">
                 <Button 
@@ -100,6 +110,7 @@ export function OrderDialog({ open, onOpenChange, onOrderPlaced }) {
                   id="quantity"
                   type="number"
                   min="1"
+                  max={cansInPossession}
                   value={quantity}
                   onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                   className="w-16 h-8 mx-2 text-center border rounded-md"
@@ -108,32 +119,26 @@ export function OrderDialog({ open, onOpenChange, onOrderPlaced }) {
                   type="button" 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setQuantity(quantity + 1)}
+                  onClick={() => quantity < cansInPossession && setQuantity(quantity + 1)}
                   className="h-8 w-8 p-0"
                 >
                   +
                 </Button>
               </div>
             </div>
-            
-            <div className="flex justify-between">
-              <span>Price per can:</span>
-              <span>₹30</span>
-            </div>
-            
-            <div className="flex justify-between border-t pt-4 font-bold">
-              <span>Total:</span>
-              <p className="text-lg font-bold">₹{quantity * 30}</p>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Placing Order..." : "Place Order"}
-              </Button>
-            </DialogFooter>
           </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isLoading || quantity < 1 || quantity > cansInPossession}
+            >
+              {isLoading ? "Processing..." : "Process Return"}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
