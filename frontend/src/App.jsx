@@ -6,6 +6,8 @@ import { HomePage } from "@/pages/HomePage";
 import { CustomersPage } from "@/pages/CustomersPage";
 import { InventoryPage } from "@/pages/InventoryPage";
 import { ReportsPage } from "@/pages/ReportsPage";
+import { CustomerDetailPage } from "@/pages/CustomerDetailPage";
+import { TransactionsPage } from "@/pages/TransactionsPage";
 
 export default function App() {
   return (
@@ -14,61 +16,77 @@ export default function App() {
         <Header />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route 
-            path="/dashboard" 
+          <Route
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/customers" 
+          <Route
+            path="/customers"
             element={
               <ProtectedRoute>
                 <CustomersPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/customers/add" 
+          <Route
+            path="/customers/add"
             element={
               <ProtectedRoute allowedRoles="owner">
                 <CustomersPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/customers/pending" 
+          <Route
+            path="/customers/pending"
             element={
               <ProtectedRoute allowedRoles="owner">
                 <CustomersPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/customers/history" 
+          <Route
+            path="/customers/history"
             element={
               <ProtectedRoute>
                 <CustomersPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/inventory" 
+          <Route
+            path="/inventory"
             element={
               <ProtectedRoute allowedRoles="owner">
                 <InventoryPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/reports" 
+          <Route
+            path="/reports"
             element={
               <ProtectedRoute allowedRoles="owner">
                 <ReportsPage />
               </ProtectedRoute>
-            } 
+            }
+          />
+          <Route
+            path="/customers/details/:customerId"
+            element={
+              <ProtectedRoute allowedRoles="owner">
+                <CustomerDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/:customerId/transactions"
+            element={
+              <ProtectedRoute allowedRoles="owner">
+                <TransactionsPage />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </div>
